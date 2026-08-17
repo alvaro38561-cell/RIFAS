@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control de Rifas</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+    body { background-color: #f4f7f6; color: #333; padding: 20px; }
+    .container { max-width: 1000px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    h1 { text-align: center; margin-bottom: 20px; color: #2c3e50; }
+    
+    .panel-control { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; background: #eef2f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .campo { display: flex; flex-direction: column; }
+    .campo label { font-size: 0.85rem; font-weight: bold; margin-bottom: 5px; color: #555; }
+    .campo input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.95rem; }
+    
+    .btn { background: #27ae60; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+    .btn:hover { background: #219150; }
+    .btn-danger { background: #e74c3c; }
+    .btn-danger:hover { background: #c0392b; }
+    .btn-secondary { background: #7f8c8d; }
+    .btn-info { background: #3498db; }
+    .btn-info:hover { background: #2980b9; }
+
+    .header-acciones { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .metrica-card { text-align: center; background: #3498db; color: white; padding: 12px; border-radius: 8px; font-size: 1.1rem; font-weight: bold; }
+
+    #contenedor-scroll { max-height: 500px; overflow-y: auto; border: 1px solid #e0e0e0; border-radius: 6px; background: #fff; }
+    .grid-numeros { display: grid; grid-template-columns: repeat(auto-fill, minmax(55px, 1fr)); gap: 8px; padding: 15px; }
+    
+    .num-btn { width: 100%; min-height: 45px; border: 1px solid #bdc3c7; background: #fff; border-radius: 6px; font-weight: bold; font-size: 0.9rem; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+    .num-btn:hover { background: #e0e0e0; }
+    .num-btn.vendido { background: #e74c3c; color: white; border-color: #c0392b; }
+
+    /* Modales */
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 1000; }
+    .modal-contenido { background: white; padding: 25px; border-radius: 8px; width: 90%; max-width: 400px; }
+    .modal-contenido h3 { margin-bottom: 15px; color: #2c3e50; }
+    .modal-contenido .campo { margin-bottom: 12px; }
+    .acciones-modal { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; }
+    
+    .info-detalle { background: #f8f9fa; border: 1px solid #e9ecef; padding: 12px; border-radius: 6px; margin-bottom: 15px; }
+    .info-detalle p { margin-bottom: 8px; font-size: 0.95rem; }
+    .info-detalle p strong { color: #495057; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1 id="tituloPrincipal">Sistema de Control de Rifas</h1>
+
+  <div class="panel-control">
+    <div class="campo">
+      <label for="inputNombre">Nombre de la Rifa</label>
+      <input type="text" id="inputNombre" placeholder="Ej. Gran Rifa Anual" oninput="guardarYActualizar()">
+    </div>
+    <div class="campo">
+      <label for="inputTotal">Total de Números</label>
+      <input type="number" id="inputTotal" min="1" value="1000">
+    </div>
+    <div class="campo">
+      <label for="inputFecha">Fecha del Sorteo</label>
+      <input type="date" id="inputFecha" onchange="guardarYActualizar()">
+    </div>
+    <div class="campo" style="justify-content: flex-end;">
+      <button class="btn" onclick="inicializarRifa()">Crear / Reiniciar Rifa</button>
+    </div>
+  </div>
+
+  <div class="header-acciones">
+    <div class="metrica-card" style="flex-grow:1; margin-right: 10px;">
+      Porcentaje Vendido: <span id="porcentaje">0%</span>
+    </div>
+    <button class="btn btn-info" onclick="descargarImagenCompleta()">📸 Descargar Imagen 100% Completa</button>
+  </div>
+
+  <div id="contenedor-scroll">
+    <div class="grid-numeros" id="gridNumeros"></div>
+  </div>
+</div>
+
+<!-- Modales -->
+<div class="modal" id="modalRegistro">
+  <div class="modal-contenido">
+    <h3 id="modalTitulo">Comprar Número</h3>
+    <form id="formComprador">
+      <input type="hidden" id="numSeleccionado">
+      <div class="campo"><label for="nombre">Nombre</label><input type="text" id="nombre" required></div>
+      <div class="campo"><label for="apellido">Apellido</label><input type="text" id="apellido" required></div>
+      <div class="campo"><label for="direccion">Dirección</label><input type="text" id="direccion" required></div>
+      <div class="campo"><label for="telefono">Teléfono</label><input type="tel" id="telefono" required></div>
+      <div class="acciones-modal">
+        <button type="button" class="btn btn-secondary" onclick="cerrarModales()">Cancelar</button>
+        <button type="submit" class="btn">Guardar Registro</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="modalVerInfo">
+  <div class="modal-contenido">
+    <h3 id="verTitulo">Información del Número</h3>
+    <div class="info-detalle">
+      <p><strong>Nombre:</strong> <span id="verNombre"></span></p>
+      <p><strong>Apellido:</strong> <span id="verApellido"></span></p>
+      <p><strong>Dirección:</strong> <span id="verDireccion"></span></p>
+      <p><strong>Teléfono:</strong> <span id="verTelefono"></span></p>
+    </div>
+    <div class="acciones-modal">
+      <button class="btn btn-secondary" onclick="cerrarModales()">Cerrar</button>
+      <button class="btn btn-danger" onclick="liberarNumero()">Liberar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let rifaData = { nombre: '', total: 1000, fecha: '', boletos: {} };
+  let numeroActivoVer = null;
+
+  function descargarImagenCompleta() {
+    const total = parseInt(rifaData.total) || 1000;
+    const cols = 20;
+    const rows = Math.ceil(total / cols);
+
+    const cellWidth = 55;
+    const cellHeight = 35;
+    const padding = 20;
+    const headerHeight = 90;
+
+    const canvasWidth = cols * cellWidth + (padding * 2);
+    const canvasHeight = rows * cellHeight + headerHeight + padding;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = canvasWidth;
+    canvas.height = canvasHeight;
+    const ctx = canvas.getContext('2d');
+
+    // Fondo blanco
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+    // Título con el nombre de la Rifa
+    ctx.fillStyle = '#2c3e50';
+    ctx.font = 'bold 24px Arial';
+    const nombreRifa = rifaData.nombre.trim() !== '' ? rifaData.nombre : 'Control de Rifa - Tabla General';
+    ctx.fillText(nombreRifa, padding, 40);
+
+    const vendidos = Object.keys(rifaData.boletos).length;
+    const pct = total > 0 ? ((vendidos / total) * 100).toFixed(1) : '0.0';
+    
+    ctx.fillStyle = '#555555';
+    ctx.font = '16px Arial';
+    ctx.fillText(`Sorteo: ${rifaData.fecha || 'Sin fecha'}   |   Vendidos: ${vendidos}/${total} (${pct}%)`, padding, 70);
+
+    // Dibujar todos los números
+    for (let i = 1; i <= total; i++) {
+      const index = i - 1;
+      const col = index % cols;
+      const row = Math.floor(index / cols);
+
+      const x = padding + col * cellWidth;
+      const y = headerHeight + row * cellHeight;
+
+      const esVendido = !!rifaData.boletos[i];
+
+      ctx.fillStyle = esVendido ? '#e74c3c' : '#ffffff';
+      ctx.fillRect(x, y, cellWidth - 3, cellHeight - 3);
+
+      ctx.strokeStyle = esVendido ? '#c0392b' : '#bdc3c7';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, cellWidth - 3, cellHeight - 3);
+
+      ctx.fillStyle = esVendido ? '#ffffff' : '#2c3e50';
+      ctx.font = 'bold 12px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(i.toString(), x + (cellWidth / 2) - 1.5, y + (cellHeight / 2) - 1.5);
+    }
+
+    const link = document.createElement('a');
+    link.download = `${nombreRifa.toLowerCase().replace(/ /g, '-')}-${total}-numeros.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+
+  function cargarEstadoInicial() {
+    try {
+      const guardado = localStorage.getItem('rifa_db');
+      if (guardado) {
+        const parsed = JSON.parse(guardado);
+        rifaData = {
+          nombre: parsed.nombre || '',
+          total: parseInt(parsed.total) || 1000,
+          fecha: parsed.fecha || '',
+          boletos: parsed.boletos || {}
+        };
+      }
+    } catch (e) { console.error(e); }
+    
+    document.getElementById('inputNombre').value = rifaData.nombre;
+    document.getElementById('inputTotal').value = rifaData.total;
+    document.getElementById('inputFecha').value = rifaData.fecha;
+    
+    actualizarTituloVista();
+    renderizarRifa();
+  }
+
+  function inicializarRifa() {
+    const total = parseInt(document.getElementById('inputTotal').value);
+    const fecha = document.getElementById('inputFecha').value;
+    const nombre = document.getElementById('inputNombre').value;
+
+    if (isNaN(total) || total < 1) return alert('Ingresa una cantidad válida de números.');
+    
+    rifaData = { nombre: nombre, total: total, fecha: fecha, boletos: {} };
+    guardarYActualizar();
+  }
+
+  function renderizarRifa() {
+    const grid = document.getElementById('gridNumeros');
+    grid.innerHTML = '';
+    const total = parseInt(rifaData.total) || 0;
+    let vendidos = 0;
+
+    for (let i = 1; i <= total; i++) {
+      const btn = document.createElement('button');
+      btn.classList.add('num-btn');
+      btn.textContent = i;
+      if (rifaData.boletos[i]) {
+        btn.classList.add('vendido');
+        btn.onclick = () => verDetallesNumero(i);
+        vendidos++;
+      } else {
+        btn.onclick = () => abrirModalRegistro(i);
+      }
+      grid.appendChild(btn);
+    }
+    const pct = total > 0 ? ((vendidos / total) * 100).toFixed(1) : '0.0';
+    document.getElementById('porcentaje').textContent = `${pct}% (${vendidos} de ${total})`;
+  }
+
+  function abrirModalRegistro(numero) {
+    document.getElementById('numSeleccionado').value = numero;
+    document.getElementById('modalTitulo').textContent = `Registrar Boleto #${numero}`;
+    document.getElementById('formComprador').reset();
+    document.getElementById('modalRegistro').style.display = 'flex';
+  }
+
+  function verDetallesNumero(numero) {
+    numeroActivoVer = numero;
+    const comprador = rifaData.boletos[numero];
+    document.getElementById('verTitulo').textContent = `Datos del Boleto #${numero}`;
+    document.getElementById('verNombre').textContent = comprador.nombre;
+    document.getElementById('verApellido').textContent = comprador.apellido;
+    document.getElementById('verDireccion').textContent = comprador.direccion;
+    document.getElementById('verTelefono').textContent = comprador.telefono;
+    document.getElementById('modalVerInfo').style.display = 'flex';
+  }
+
+  function liberarNumero() {
+    if (numeroActivoVer && confirm(`¿Liberar número #${numeroActivoVer}?`)) {
+      delete rifaData.boletos[numeroActivoVer];
+      cerrarModales();
+      guardarYActualizar();
+    }
+  }
+
+  function cerrarModales() {
+    document.getElementById('modalRegistro').style.display = 'none';
+    document.getElementById('modalVerInfo').style.display = 'none';
+  }
+
+  document.getElementById('formComprador').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const num = document.getElementById('numSeleccionado').value;
+    rifaData.boletos[num] = {
+      nombre: document.getElementById('nombre').value,
+      apellido: document.getElementById('apellido').value,
+      direccion: document.getElementById('direccion').value,
+      telefono: document.getElementById('telefono').value
+    };
+    cerrarModales();
+    guardarYActualizar();
+  });
+
+  function actualizarTituloVista() {
+    const titulo = document.getElementById('tituloPrincipal');
+    titulo.textContent = rifaData.nombre.trim() !== '' ? rifaData.nombre : 'Sistema de Control de Rifas';
+  }
+
+  function guardarYActualizar() {
+    rifaData.nombre = document.getElementById('inputNombre').value;
+    rifaData.fecha = document.getElementById('inputFecha').value;
+    localStorage.setItem('rifa_db', JSON.stringify(rifaData));
+    actualizarTituloVista();
+    renderizarRifa();
+  }
+
+  window.onload = cargarEstadoInicial;
+</script>
+
+</body>
+</html>
